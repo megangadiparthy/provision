@@ -198,6 +198,71 @@ a { color: inherit; }
   color: var(--muted);
 }
 
+.eats {
+  border: 0;
+  margin: 0 0 1.4rem;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+.eats legend {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 0.3rem;
+}
+.tick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.85rem;
+  border-radius: 999px;
+  background: var(--card);
+  cursor: pointer;
+}
+.tick input { accent-color: #111; }
+.tick:has(input:checked) { background: #111114; color: #fff; }
+
+.use {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+  margin-bottom: 2rem;
+}
+.use h2 {
+  margin: 0 0 0.7rem;
+  font-weight: 400;
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
+}
+.todo, .shop { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.45rem; }
+.use h2 .count { color: var(--muted); font-size: 0.95rem; letter-spacing: 0; }
+.todo span { flex: 1; }
+.walk-note { margin: 0.8rem 0 0; text-align: left; }
+.todo label, .shop li {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  background: var(--card);
+  border-radius: 16px;
+  padding: 0.8rem 0.9rem;
+}
+.todo input { margin-top: 0.2rem; accent-color: #111; }
+.todo label:has(input:checked) span { color: var(--muted); text-decoration: line-through; }
+.shop li { color: var(--ink); }
+.use-actions { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
+.nowline { margin: 0.8rem 0 0; max-width: 34rem; color: rgba(255,255,255,0.72); }
+.kind {
+  flex: 1 0 100%;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.62;
+}
+.day-pick { flex-wrap: wrap; }
 .week-block { margin-top: 3.2rem; }
 .week-head {
   display: flex;
@@ -345,7 +410,7 @@ footer p { margin: 0 0 0.8rem; max-width: 40rem; }
 .foot-links a:hover { opacity: 0.7; }
 
 @media (max-width: 900px) {
-  .plates { grid-template-columns: 1fr; }
+  .plates, .use { grid-template-columns: 1fr; }
   .plate { min-height: 240px; }
   .week { display: flex; overflow-x: auto; }
   .day { min-width: 132px; }

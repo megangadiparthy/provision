@@ -129,8 +129,13 @@ function load() {
     const raw = JSON.parse(localStorage.getItem("provision.v1") || "null");
     if (!raw || !Array.isArray(raw.days) || raw.days.length !== 7) return null;
     if (raw.goal) {
-      const radio = form.querySelector(`input[value="${raw.goal}"]`);
+      const radio = form.querySelector(`input[name="goal"][value="${raw.goal}"]`);
       if (radio) radio.checked = true;
+    }
+    if (Array.isArray(raw.omit)) {
+      form.querySelectorAll('input[name="omit"]').forEach((box) => {
+        box.checked = raw.omit.includes(box.value);
+      });
     }
     if (raw.device) document.getElementById("device").value = raw.device;
     if (raw.weight) document.getElementById("weight").value = raw.weight;
@@ -147,8 +152,171 @@ function save() {
     goal: data.get("goal"),
     device: data.get("device"),
     weight: Number(data.get("weight")) || 68,
+    omit: data.getAll("omit"),
   }));
 }
+
+function omitted() {
+  return new Set(new FormData(form).getAll("omit"));
+}
+
+function checks() {
+  try {
+    return JSON.parse(localStorage.getItem("provision.checks") || "{}");
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveCheck(date, id, on) {
+  const all = checks();
+  all[date] = all[date] || {};
+  all[date][id] = on;
+  localStorage.setItem("provision.checks", JSON.stringify(all));
+}
+
+function fitPlate(text) {
+  const skip = omitted();
+  const noMeat = skip.has("meat");
+  const noFish = skip.has("fish") || noMeat;
+  const noDairy = skip.has("dairy");
+  const noEggs = skip.has("eggs");
+  let s = text;
+  if (noFish) {
+    s = s.replace(/salmon or tofu/gi, "tofu");
+    s = s.replace(/Fish,/g, "Tofu,");
+    s = s.replace(/Fish and/g, "Tofu and");
+    s = s.replace(/\bfish\b/gi, "tofu");
+    s = s.replace(/tuna or chicken/gi, "chicken");
+    s = s.replace(/\btuna\b/gi, "chicken");
+  }
+  if (noMeat) {
+    s = s.replace(/chicken or beans/gi, "beans");
+    s = s.replace(/chicken or tofu/gi, "tofu");
+    s = s.replace(/meat or tofu/gi, "tofu");
+    s = s.replace(/meat or beans/gi, "beans");
+    s = s.replace(/Beef, beans, or tofu/g, "Beans or tofu");
+    s = s.replace(/Rice and chicken/g, "Rice and tofu");
+    s = s.replace(/with chicken/gi, "with beans");
+    s = s.replace(/\bchicken\b/gi, "tofu");
+    s = s.replace(/\bbeef\b/gi, "beans");
+    s = s.replace(/\bmeat\b/gi, "tofu");
+    s = s.replace(/a palm of protein/gi, "a palm of tofu or beans");
+  }
+  if (noEggs) {
+    s = s.replace(/Three eggs, oats, and an orange\./g, "Oats, fruit, and peanut butter.");
+    s = s.replace(/Eggs and oats/g, "Oats and peanut butter");
+    s = s.replace(/Eggs, oats, and milk/g, "Oats and fruit");
+    s = s.replace(/Toast and eggs/g, "Toast and peanut butter");
+    s = s.replace(/Eggs and fruit/g, "Oats and fruit");
+    s = s.replace(/\beggs\b/gi, "tofu");
+  }
+  if (noDairy) {
+    s = s.replace(/Greek yogurt/gi, "yogurt");
+    s = s.replace(/(?<!soy )yogurt/gi, "soy yogurt");
+    s = s.replace(/(?<!soy )milk/gi, "soy milk");
+  }
+  return s;
+}
+
+const PANTRY = [
+  ["soy yogurt", "Soy yogurt"],
+  ["yogurt", "Yogurt"],
+  ["soy milk", "Soy milk"],
+  ["peanut butter", "Peanut butter"],
+  ["milk", "Milk"],
+  ["banana", "Bananas"],
+  ["berries", "Berries"],
+  ["apple", "Apples"],
+  ["orange", "Oranges"],
+  ["oatmeal", "Oats"],
+  ["oats", "Oats"],
+  ["toast", "Bread"],
+  ["eggs", "Eggs"],
+  ["chicken", "Chicken"],
+  ["beef", "Beef"],
+  ["beans", "Beans"],
+  ["tofu", "Tofu"],
+  ["salmon", "Salmon"],
+  ["tuna", "Tuna"],
+  ["fish", "Fish"],
+  ["rice", "Rice"],
+  ["potato", "Potatoes"],
+  ["pasta", "Pasta"],
+  ["noodles", "Noodles"],
+  ["greens", "Greens"],
+  ["green", "Greens"],
+  ["salad", "Salad greens"],
+  ["cabbage", "Cabbage"],
+  ["vegetables", "Vegetables"],
+];
+
+const PROTEINS = new Set(["Chicken", "Beef", "Beans", "Tofu", "Salmon", "Tuna", "Fish", "Eggs"]);
+
+function foodsIn(meal) {
+  const blob = meal.toLowerCase();
+  const found = [];
+  const seen = new Set();
+  PANTRY.forEach(([word, label]) => {
+    if (!blob.includes(word) || seen.has(label)) return;
+    if (word === "yogurt" && blob.includes("soy yogurt")) return;
+    if (word === "milk" && blob.includes("soy milk")) return;
+    seen.add(label);
+    found.push(label);
+  });
+  if (!/\bor\b/.test(blob)) return found;
+  let kept = false;
+  return found.filter((label) => {
+    if (!PROTEINS.has(label)) return true;
+    if (kept) return false;
+    kept = true;
+    return true;
+  });
+}
+
+function shopList(meals) {
+  const out = [];
+  const seen = new Set();
+  meals.forEach((meal) => {
+    foodsIn(meal).forEach((label) => {
+      if (seen.has(label)) return;
+      seen.add(label);
+      out.push(label);
+    });
+  });
+  return out;
+}
+
+function todayIso() {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  return d.toISOString().slice(0, 10);
+}
+
+function rightNow(g, kind) {
+  const h = new Date().getHours();
+  if (h < 10) return "Breakfast first. The session can wait until you have eaten.";
+  if (h < 15) {
+    return kind === "easy"
+      ? "A walk fits now. Save the harder session for a longer night."
+      : "This is a good window for the session. Eat after.";
+  }
+  if (h < 19) {
+    return g === "sleep"
+      ? "Coffee is done. Have dinner early enough to sleep."
+      : "Dinner is the meal left to get right.";
+  }
+  return g === "sleep" ? "Keep the rest of the night quiet." : "If dinner is still ahead, eat it, then stop.";
+}
+
+function stepsNote(day, train) {
+  if (!/walk/i.test(train) || !Number.isFinite(num(day.steps))) return "";
+  const steps = Math.round(day.steps).toLocaleString("en-US");
+  if (day.steps >= 8000) return `You are already at ${steps} steps. The walk can stay short.`;
+  return `You have ${steps} steps. A walk of this length is usually about 3,500 more.`;
+}
+
+let copyText = "";
 
 function median(nums) {
   const s = nums.filter((n) => Number.isFinite(n)).slice().sort((a, b) => a - b);
@@ -212,10 +380,12 @@ function renderWeek() {
     const card = document.createElement("div");
     card.className = "day" + (i === selected ? " on" : "");
     const when = new Date(day.date + "T12:00:00");
+    const tag = KIND_LABEL[judge(day).kind].replace(" day", "");
     card.innerHTML = `
       <button type="button" class="day-pick">
         <span class="day-num">${when.getDate()}</span>
         <span class="day-wd">${when.toLocaleDateString("en-US", { weekday: "short" })}</span>
+        <span class="kind">${tag}</span>
       </button>
       ${metricField("Sleep h", "sleep", "decimal", day.sleep, i)}
       ${metricField("HRV", "hrv", "numeric", day.hrv, i)}
@@ -236,8 +406,21 @@ function renderPlan() {
   const day = days[selected];
   const g = goal();
   const { kind, why, hrvMid } = judge(day);
-  const meals = PLATES[g][kind];
+  const meals = PLATES[g][kind].map(fitPlate);
   const grams = proteinGrams();
+  const each = Math.round(grams / 3);
+  const train = TRAIN[g][kind];
+  const shop = shopList(meals);
+  const done = checks()[day.date] || {};
+  const labelFor = (label, meal) => meal.toLowerCase().startsWith(label.toLowerCase()) ? meal : label + ". " + meal;
+  const tasks = [
+    { id: "move", text: train },
+    { id: "breakfast", text: labelFor("Breakfast", meals[0]) },
+    { id: "lunch", text: labelFor("Lunch", meals[1]) },
+    { id: "dinner", text: labelFor("Dinner", meals[2]) },
+  ];
+  if (g === "sleep") tasks.push({ id: "coffee", text: "Last coffee was with lunch." });
+  const finished = tasks.filter((task) => done[task.id]).length;
   const hrvBit = Number.isFinite(num(day.hrv)) && hrvMid != null
     ? ` HRV is ${Math.round(day.hrv)} ms, and the middle of this week is ${Math.round(hrvMid)}.`
     : "";
@@ -247,18 +430,44 @@ function renderPlan() {
     : kind === "hard"
       ? "The night sits in the better half of the week, so a real session fits."
       : "Train, and leave something in the tank.";
+  const now = day.date === todayIso() ? `<p class="nowline">${rightNow(g, kind)}</p>` : "";
+  const walked = stepsNote(day, train);
+  copyText = [
+    `${weekday(day.date)}, ${KIND_LABEL[kind].toLowerCase()}, ${GOAL_LABEL[g].toLowerCase()}`,
+    train,
+    walked,
+    `${grams} g protein, about ${each} g on each plate`,
+    "",
+    `Breakfast: ${meals[0]}`,
+    `Lunch: ${meals[1]}`,
+    `Dinner: ${meals[2]}`,
+    shop.length ? "Shop: " + shop.join(", ") : "",
+  ].filter((line) => line !== "").join("\n");
   dayEl.innerHTML = `
     <div class="day-card">
       <h2>${weekday(day.date)}</h2>
-      <p class="verdict">${TRAIN[g][kind]}</p>
+      <p class="verdict">${train}</p>
       <p class="why">${why.length ? why.join(" ") : "Sleep, HRV, and resting heart rate are not waving you off."}</p>
+      ${now}
       <div class="slip">
         <div><b>${KIND_LABEL[kind]}</b><span>${GOAL_LABEL[g]}</span></div>
-        <div><b>${grams} g</b><span>Protein today</span></div>
+        <div><b>${grams} g</b><span>About ${each} g a plate</span></div>
         <div><b>${fmt(day.work)} min</b><span>Already trained</span></div>
       </div>
     </div>`;
   planEl.innerHTML = `
+    <div class="use">
+      <section>
+        <h2>Do this${finished ? ` <span class="count">${finished} of ${tasks.length}</span>` : ""}</h2>
+        <ul class="todo">${tasks.map((task) => `<li><label><input type="checkbox" data-todo="${task.id}" ${done[task.id] ? "checked" : ""}><span>${task.text}</span></label></li>`).join("")}</ul>
+        ${walked ? `<p class="note walk-note">${walked}</p>` : ""}
+      </section>
+      <section>
+        <h2>Shop</h2>
+        <ul class="shop">${shop.length ? shop.map((item) => `<li>${item}</li>`).join("") : "<li>These plates are a shape, so there is nothing to buy yet.</li>"}</ul>
+        <div class="use-actions"><button type="button" class="solid" data-copy>Copy today</button></div>
+      </section>
+    </div>
     <h2 class="section-title">Today's plates</h2>
     <dl class="plates">
       <div class="plate plate-am"><div class="plate-copy"><dt>Breakfast</dt><dd>${meals[0]}</dd></div></div>
@@ -279,8 +488,12 @@ function answer(q) {
   const day = days[selected];
   const g = goal();
   const { kind } = judge(day);
-  const meals = PLATES[g][kind];
+  const meals = PLATES[g][kind].map(fitPlate);
   const s = q.toLowerCase();
+  if (/shop|grocery|buy|list/.test(s)) {
+    const list = shopList(meals);
+    return list.length ? "Buy " + list.join(", ") + "." : "The plates are a shape today, so there is no list yet.";
+  }
   if (/breakfast|morning/.test(s)) return meals[0];
   if (/lunch|midday/.test(s)) return meals[1];
   if (/dinner|supper|tonight|evening/.test(s)) return meals[2];
@@ -292,11 +505,30 @@ function answer(q) {
   if (/skin|acne|eczema|psoriasis|flare/.test(s)) return "This will not clear a flare. Short sleep and a big sugar hit are the two levers on the table today. The rest belongs with a clinician if the skin is changing fast.";
   if (/lift|train|workout|run|gym|session|intervals/.test(s)) return TRAIN[g][kind];
   if (/sleep|hrv|tired|rest/.test(s)) return document.querySelector(".why").textContent + " " + TRAIN[g][kind];
-  return "Ask about breakfast, lunch, dinner, protein, training, sugar, or sleep. The answer comes from this row and the want you picked.";
+  return "Ask about breakfast, lunch, dinner, protein, training, sugar, sleep, or what to buy. The answer comes from this row and the want you picked.";
 }
 
-form.addEventListener("input", () => render());
-form.addEventListener("change", () => render());
+form.addEventListener("input", (e) => {
+  if (e.target.matches("[data-todo]")) return;
+  render();
+});
+form.addEventListener("change", (e) => {
+  if (e.target.matches("[data-todo]")) {
+    saveCheck(days[selected].date, e.target.dataset.todo, e.target.checked);
+  }
+  render();
+});
+planEl.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-copy]");
+  if (!btn) return;
+  const label = "Copy today";
+  navigator.clipboard.writeText(copyText).then(() => {
+    btn.textContent = "Copied";
+    setTimeout(() => { btn.textContent = label; }, 1400);
+  }).catch(() => {
+    btn.textContent = "Copy failed";
+  });
+});
 
 weekEl.addEventListener("input", (e) => {
   const el = e.target;
