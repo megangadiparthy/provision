@@ -102,10 +102,12 @@ const KIND_LABEL = { easy: "Easy day", steady: "Steady day", hard: "Hard day" };
 const weekEl = document.getElementById("week");
 const dayEl = document.getElementById("day");
 const planEl = document.getElementById("plan");
+const leadEl = document.getElementById("lead");
 const answerEl = document.getElementById("answer");
 const hintEl = document.getElementById("device-hint");
 const form = document.getElementById("controls");
 
+let shopSpan = "today";
 let days = load() || blankWeek();
 let selected = days.length - 1;
 
@@ -139,6 +141,11 @@ function load() {
     }
     if (raw.device) document.getElementById("device").value = raw.device;
     if (raw.weight) document.getElementById("weight").value = raw.weight;
+    if (raw.unit) {
+      const unitRadio = form.querySelector(`input[name="unit"][value="${raw.unit}"]`);
+      if (unitRadio) unitRadio.checked = true;
+    }
+    if (raw.shopSpan === "week") shopSpan = "week";
     return raw.days;
   } catch (_) {
     return null;
@@ -152,8 +159,23 @@ function save() {
     goal: data.get("goal"),
     device: data.get("device"),
     weight: Number(data.get("weight")) || 68,
+    unit: data.get("unit") || "kg",
     omit: data.getAll("omit"),
+    shopSpan,
   }));
+}
+
+const TAPS = { soft: 6, select: 8, tap: 14, success: [12, 46, 18] };
+let lastBuzz = 0;
+
+function buzz(kind) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const now = Date.now();
+  if (now - lastBuzz < 80) return;
+  lastBuzz = now;
+  if (typeof navigator.vibrate !== "function") return;
+  const pattern = TAPS[kind] || kind;
+  try { navigator.vibrate(pattern); } catch (_) {}
 }
 
 function omitted() {
@@ -309,6 +331,41 @@ function rightNow(g, kind) {
   return g === "sleep" ? "Keep the rest of the night quiet." : "If dinner is still ahead, eat it, then stop.";
 }
 
+function versusYesterday(day) {
+  const i = days.findIndex((item) => item.date === day.date);
+  if (i <= 0) return "";
+  const prev = days[i - 1];
+  const lines = [];
+  if (num(day.sleep) != null && num(prev.sleep) != null) {
+    const gap = Math.round((day.sleep - prev.sleep) * 10) / 10;
+    if (gap <= -0.4) lines.push(`Sleep is ${Math.abs(gap).toFixed(1)} hours under yesterday.`);
+    else if (gap >= 0.4) lines.push(`Sleep is ${gap.toFixed(1)} hours over yesterday.`);
+  }
+  if (num(day.hrv) != null && num(prev.hrv) != null) {
+    const gap = Math.round(day.hrv - prev.hrv);
+    if (gap <= -5) lines.push(`HRV is ${Math.abs(gap)} ms under yesterday.`);
+    else if (gap >= 5) lines.push(`HRV is ${gap} ms over yesterday.`);
+  }
+  return lines.join(" ");
+}
+
+function windowFor(id, g, kind) {
+  if (id === "breakfast") return "Before 11";
+  if (id === "lunch") return "Before 4";
+  if (id === "dinner") return g === "sleep" ? "Early evening" : "Evening";
+  if (id === "coffee") return "After lunch";
+  if (id === "move") return g === "sleep" || kind === "easy" ? "In daylight" : "Today";
+  return "Today";
+}
+
+function markOut(date, id) {
+  const all = checks();
+  all[date] = all[date] || {};
+  all[date][id] = true;
+  all[date][id + "Out"] = true;
+  localStorage.setItem("provision.checks", JSON.stringify(all));
+}
+
 function stepsNote(day, train) {
   if (!/walk/i.test(train) || !Number.isFinite(num(day.steps))) return "";
   const steps = Math.round(day.steps).toLocaleString("en-US");
@@ -349,7 +406,9 @@ function goal() {
 
 function weight() {
   const n = Number(document.getElementById("weight").value);
-  return n >= 35 && n <= 200 ? n : 68;
+  const lb = (new FormData(form).get("unit") || "kg") === "lb";
+  const kg = lb ? n / 2.2046226218 : n;
+  return kg >= 35 && kg <= 200 ? kg : 68;
 }
 
 function proteinGrams() {
@@ -374,6 +433,52 @@ function metricField(label, key, mode, value, i) {
   return `<label class="metric"><span>${label}</span><input data-k="${key}" data-i="${i}" inputmode="${mode}" value="${value ?? ""}"></label>`;
 }
 
+function mealsFor(day) {
+  return PLATES[goal()][judge(day).kind].map(fitPlate);
+}
+
+function mealSlot() {
+  const h = new Date().getHours();
+  if (h < 11) return 0;
+  if (h < 16) return 1;
+  return 2;
+}
+
+function taskList(g, train, meals) {
+  const labelFor = (label, meal) => meal.toLowerCase().startsWith(label.toLowerCase()) ? meal : label + ". " + meal;
+  const tasks = [
+    { id: "move", text: train },
+    { id: "breakfast", text: labelFor("Breakfast", meals[0]) },
+    { id: "lunch", text: labelFor("Lunch", meals[1]) },
+    { id: "dinner", text: labelFor("Dinner", meals[2]) },
+  ];
+  if (g === "sleep") tasks.push({ id: "coffee", text: "Last coffee was with lunch." });
+  return tasks;
+}
+
+function nextTask(tasks, done, isToday) {
+  const open = tasks.filter((task) => !done[task.id]);
+  if (!open.length) return null;
+  if (!isToday) return open[0];
+  const prefer = ["breakfast", "lunch", "dinner"][mealSlot()];
+  return open.find((task) => task.id === prefer)
+    || open.find((task) => task.id === "move")
+    || open[0];
+}
+
+function weekShop() {
+  const out = [];
+  const seen = new Set();
+  days.forEach((day) => {
+    shopList(mealsFor(day)).forEach((item) => {
+      if (seen.has(item)) return;
+      seen.add(item);
+      out.push(item);
+    });
+  });
+  return out;
+}
+
 function renderWeek() {
   weekEl.innerHTML = "";
   days.forEach((day, i) => {
@@ -382,18 +487,21 @@ function renderWeek() {
     const when = new Date(day.date + "T12:00:00");
     const tag = KIND_LABEL[judge(day).kind].replace(" day", "");
     card.innerHTML = `
-      <button type="button" class="day-pick">
-        <span class="day-num">${when.getDate()}</span>
-        <span class="day-wd">${when.toLocaleDateString("en-US", { weekday: "short" })}</span>
-        <span class="kind">${tag}</span>
-      </button>
+      <div class="day-pick">
+        <button type="button" class="day-hit">
+          <span class="day-num">${when.getDate()}</span>
+          <span class="day-wd">${when.toLocaleDateString("en-US", { weekday: "short" })}</span>
+          <span class="kind">${tag}</span>
+        </button>
+        <input type="checkbox" switch class="buzz" data-day="${i}" tabindex="-1" aria-hidden="true">
+      </div>
       ${metricField("Sleep h", "sleep", "decimal", day.sleep, i)}
       ${metricField("HRV", "hrv", "numeric", day.hrv, i)}
       ${metricField("Rest HR", "rhr", "numeric", day.rhr, i)}
       ${metricField("Steps", "steps", "numeric", day.steps, i)}
       ${metricField("Train", "work", "numeric", day.work, i)}`;
     card.addEventListener("click", (e) => {
-      if (e.target.closest("input")) return;
+      if (e.target.closest("input[data-k]")) return;
       selected = i;
       answerEl.hidden = true;
       render();
@@ -406,21 +514,17 @@ function renderPlan() {
   const day = days[selected];
   const g = goal();
   const { kind, why, hrvMid } = judge(day);
-  const meals = PLATES[g][kind].map(fitPlate);
+  const meals = mealsFor(day);
   const grams = proteinGrams();
   const each = Math.round(grams / 3);
   const train = TRAIN[g][kind];
-  const shop = shopList(meals);
+  const today = day.date === todayIso();
+  const shop = shopSpan === "week" ? weekShop() : shopList(meals);
   const done = checks()[day.date] || {};
-  const labelFor = (label, meal) => meal.toLowerCase().startsWith(label.toLowerCase()) ? meal : label + ". " + meal;
-  const tasks = [
-    { id: "move", text: train },
-    { id: "breakfast", text: labelFor("Breakfast", meals[0]) },
-    { id: "lunch", text: labelFor("Lunch", meals[1]) },
-    { id: "dinner", text: labelFor("Dinner", meals[2]) },
-  ];
-  if (g === "sleep") tasks.push({ id: "coffee", text: "Last coffee was with lunch." });
+  const tasks = taskList(g, train, meals);
   const finished = tasks.filter((task) => done[task.id]).length;
+  const upcoming = nextTask(tasks, done, today);
+  const slot = mealSlot();
   const hrvBit = Number.isFinite(num(day.hrv)) && hrvMid != null
     ? ` HRV is ${Math.round(day.hrv)} ms, and the middle of this week is ${Math.round(hrvMid)}.`
     : "";
@@ -430,25 +534,41 @@ function renderPlan() {
     : kind === "hard"
       ? "The night sits in the better half of the week, so a real session fits."
       : "Train, and leave something in the tank.";
-  const now = day.date === todayIso() ? `<p class="nowline">${rightNow(g, kind)}</p>` : "";
+  const now = today ? `<p class="nowline">${rightNow(g, kind)}</p>` : "";
+  const prior = versusYesterday(day);
   const walked = stepsNote(day, train);
+  const plateText = (meal, id) => done[id + "Out"] ? "Ate out." : meal;
+  const taskText = (task) => {
+    if (!done[task.id + "Out"]) return task.text;
+    const name = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner" }[task.id] || "Meal";
+    return name + ". Ate out.";
+  };
+  const names = ["Breakfast", "Lunch", "Dinner"];
   copyText = [
     `${weekday(day.date)}, ${KIND_LABEL[kind].toLowerCase()}, ${GOAL_LABEL[g].toLowerCase()}`,
     train,
     walked,
     `${grams} g protein, about ${each} g on each plate`,
     "",
-    `Breakfast: ${meals[0]}`,
-    `Lunch: ${meals[1]}`,
-    `Dinner: ${meals[2]}`,
-    shop.length ? "Shop: " + shop.join(", ") : "",
+    `Breakfast: ${plateText(meals[0], "breakfast")}`,
+    `Lunch: ${plateText(meals[1], "lunch")}`,
+    `Dinner: ${plateText(meals[2], "dinner")}`,
+    shop.length ? (shopSpan === "week" ? "Shop this week: " : "Shop: ") + shop.join(", ") : "",
   ].filter((line) => line !== "").join("\n");
+  const ate = upcoming && /breakfast|lunch|dinner/.test(upcoming.id)
+    ? `<button type="button" class="ate" data-ate="${upcoming.id}">Ate out</button>`
+    : "";
+  const nextBlock = upcoming
+    ? `<div class="next-wrap"><label class="next"><input type="checkbox" switch class="buzz" data-next="${upcoming.id}"><span class="next-k">${today ? "Next" : "Still open"}, ${windowFor(upcoming.id, g, kind).toLowerCase()}</span><span class="next-t">${taskText(upcoming)}</span></label>${ate}</div>`
+    : `<p class="next done"><span class="next-k">${today ? "Today" : weekday(day.date)}</span><span class="next-t">This day is done.</span></p>`;
   dayEl.innerHTML = `
     <div class="day-card">
       <h2>${weekday(day.date)}</h2>
       <p class="verdict">${train}</p>
       <p class="why">${why.length ? why.join(" ") : "Sleep, HRV, and resting heart rate are not waving you off."}</p>
+      ${prior ? `<p class="why">${prior}</p>` : ""}
       ${now}
+      ${nextBlock}
       <div class="slip">
         <div><b>${KIND_LABEL[kind]}</b><span>${GOAL_LABEL[g]}</span></div>
         <div><b>${grams} g</b><span>About ${each} g a plate</span></div>
@@ -459,26 +579,39 @@ function renderPlan() {
     <div class="use">
       <section>
         <h2>Do this${finished ? ` <span class="count">${finished} of ${tasks.length}</span>` : ""}</h2>
-        <ul class="todo">${tasks.map((task) => `<li><label><input type="checkbox" data-todo="${task.id}" ${done[task.id] ? "checked" : ""}><span>${task.text}</span></label></li>`).join("")}</ul>
+        <ul class="todo">${tasks.map((task) => `<li><label><input type="checkbox" switch data-todo="${task.id}" ${done[task.id] ? "checked" : ""}><span class="markbox" aria-hidden="true"></span><span>${taskText(task)}</span></label></li>`).join("")}</ul>
         ${walked ? `<p class="note walk-note">${walked}</p>` : ""}
       </section>
       <section>
         <h2>Shop</h2>
+        <div class="shop-switch">
+          <button type="button" data-span="today" class="${shopSpan === "today" ? "on" : ""}">Today</button>
+          <button type="button" data-span="week" class="${shopSpan === "week" ? "on" : ""}">This week</button>
+        </div>
         <ul class="shop">${shop.length ? shop.map((item) => `<li>${item}</li>`).join("") : "<li>These plates are a shape, so there is nothing to buy yet.</li>"}</ul>
-        <div class="use-actions"><button type="button" class="solid" data-copy>Copy today</button></div>
+        <div class="use-actions"><div class="copy-wrap" data-copy><button type="button" class="solid"><span class="copy-label">${shopSpan === "week" ? "Copy the list" : "Copy today"}</span></button><input type="checkbox" switch class="buzz" tabindex="-1" aria-hidden="true"></div></div>
       </section>
     </div>
-    <h2 class="section-title">Today's plates</h2>
+    <h2 class="section-title">${today ? "Today's plates" : weekday(day.date) + "'s plates"}</h2>
     <dl class="plates">
-      <div class="plate plate-am"><div class="plate-copy"><dt>Breakfast</dt><dd>${meals[0]}</dd></div></div>
-      <div class="plate plate-mid"><div class="plate-copy"><dt>Lunch</dt><dd>${meals[1]}</dd></div></div>
-      <div class="plate plate-pm"><div class="plate-copy"><dt>Dinner</dt><dd>${meals[2]}</dd></div></div>
+      ${meals.map((meal, i) => {
+        const id = ["breakfast", "lunch", "dinner"][i];
+        return `<div class="plate plate-${["am", "mid", "pm"][i]}${today && slot === i ? " is-now" : ""}"><div class="plate-copy"><dt>${names[i]}${today && slot === i ? ' <span class="when">Now</span>' : ""}</dt><dd>${plateText(meal, id)}</dd></div></div>`;
+      }).join("")}
     </dl>
     <p class="note">${sleepBit}${hrvBit} ${kindLine} ${PLATES[g].watch}</p>`;
 }
 
 function render() {
   hintEl.textContent = HINTS[document.getElementById("device").value];
+  const weightInput = document.getElementById("weight");
+  const lb = (new FormData(form).get("unit") || "kg") === "lb";
+  weightInput.min = lb ? 80 : 35;
+  weightInput.max = lb ? 440 : 200;
+  weightInput.step = lb ? 1 : 0.5;
+  const todayIndex = days.findIndex((day) => day.date === todayIso());
+  const jump = document.getElementById("jump-today");
+  if (jump) jump.hidden = todayIndex < 0 || selected === todayIndex;
   renderWeek();
   renderPlan();
   save();
@@ -497,7 +630,11 @@ function answer(q) {
   if (/breakfast|morning/.test(s)) return meals[0];
   if (/lunch|midday/.test(s)) return meals[1];
   if (/dinner|supper|tonight|evening/.test(s)) return meals[2];
-  if (/protein|grams/.test(s)) return `${proteinGrams()} grams today, about ${PROTEIN[g]} grams per kilogram at ${weight()} kg. Split it over the three plates.`;
+  if (/protein|grams/.test(s)) {
+    const lb = (new FormData(form).get("unit") || "kg") === "lb";
+    const at = lb ? Math.round(weight() * 2.2046226218) + " lb" : weight() + " kg";
+    return `${proteinGrams()} grams today, about ${PROTEIN[g]} grams per kilogram at ${at}. Split it over the three plates.`;
+  }
   if (/sugar|sweet|dessert|candy/.test(s)) return g === "skin"
     ? "Have the sweet thing with a meal, or leave it. On a short night it is the first thing to cut."
     : "If you want it, put it next to a meal. A sweet thing on an empty evening is the sloppy choice.";
@@ -509,30 +646,80 @@ function answer(q) {
 }
 
 form.addEventListener("input", (e) => {
-  if (e.target.matches("[data-todo]")) return;
+  if (e.target.matches("[data-todo], .buzz")) return;
   render();
 });
 form.addEventListener("change", (e) => {
+  if (e.target.closest("[data-copy]")) return;
+  if (e.target.name === "unit") {
+    buzz("select");
+    const input = document.getElementById("weight");
+    const n = Number(input.value);
+    if (Number.isFinite(n)) {
+      input.value = e.target.value === "lb"
+        ? String(Math.round(n * 2.2046226218))
+        : String(Math.round((n / 2.2046226218) * 10) / 10);
+    }
+  }
   if (e.target.matches("[data-todo]")) {
     saveCheck(days[selected].date, e.target.dataset.todo, e.target.checked);
+    const boxes = [...planEl.querySelectorAll("[data-todo]")];
+    const allOn = e.target.checked && boxes.every((box) => box === e.target || box.checked);
+    buzz(allOn ? "success" : e.target.checked ? "tap" : "soft");
   }
   render();
 });
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (!t.classList || !t.classList.contains("buzz")) return;
+  const label = t.closest("label");
+  if (t.dataset.day != null) {
+    const i = Number(t.dataset.day);
+    if (selected !== i) buzz("select");
+    selected = i;
+  }
+  if (t.dataset.next) {
+    const id = t.dataset.next;
+    const boxes = [...planEl.querySelectorAll("[data-todo]")];
+    const left = boxes.filter((box) => box.dataset.todo !== id && !box.checked).length;
+    saveCheck(days[selected].date, id, true);
+    buzz(left ? "tap" : "success");
+  }
+  const radio = label && label.querySelector('input[type="radio"][name="goal"]');
+  if (radio) {
+    radio.checked = true;
+    buzz("select");
+  }
+  const omit = label && label.querySelector('input[name="omit"]');
+  if (omit) {
+    omit.checked = !omit.checked;
+    buzz("select");
+  }
+}, true);
 planEl.addEventListener("click", (e) => {
+  const span = e.target.closest("[data-span]");
+  if (span) {
+    shopSpan = span.dataset.span;
+    buzz("select");
+    render();
+    return;
+  }
   const btn = e.target.closest("[data-copy]");
   if (!btn) return;
-  const label = "Copy today";
+  const word = btn.querySelector(".copy-label");
+  const label = word ? word.textContent : "Copy today";
+  buzz("success");
   navigator.clipboard.writeText(copyText).then(() => {
-    btn.textContent = "Copied";
-    setTimeout(() => { btn.textContent = label; }, 1400);
+    if (word) word.textContent = "Copied";
+    setTimeout(() => { if (word) word.textContent = label; }, 1400);
   }).catch(() => {
-    btn.textContent = "Copy failed";
+    if (word) word.textContent = "Copy failed";
   });
 });
 
 weekEl.addEventListener("input", (e) => {
   const el = e.target;
-  if (!el.matches("input")) return;
+  if (!el.dataset || !el.dataset.k) return;
   const i = Number(el.dataset.i);
   const key = el.dataset.k;
   days[i][key] = el.value === "" ? null : Number(el.value);
@@ -542,7 +729,16 @@ weekEl.addEventListener("input", (e) => {
   weekEl.querySelectorAll(".day").forEach((card, idx) => card.classList.toggle("on", idx === selected));
 });
 
+dayEl.addEventListener("click", (e) => {
+  const ate = e.target.closest("[data-ate]");
+  if (!ate) return;
+  markOut(days[selected].date, ate.dataset.ate);
+  buzz("tap");
+  render();
+});
+
 document.getElementById("sample").addEventListener("click", () => {
+  buzz("select");
   days = blankWeek();
   selected = days.length - 1;
   answerEl.hidden = true;
@@ -573,6 +769,7 @@ document.getElementById("csv").addEventListener("change", async (e) => {
 });
 
 document.getElementById("apply-paste").addEventListener("click", () => {
+  buzz("tap");
   const text = document.getElementById("paste").value;
   const day = days[selected];
   const sleepClock = text.match(/(\d+)\s*h(?:ours?|r)?(?:\s*(\d+)\s*m)?/i);
@@ -587,6 +784,14 @@ document.getElementById("apply-paste").addEventListener("click", () => {
   if (rhr) day.rhr = Number(rhr[1]);
   if (steps) day.steps = Number(steps[1].replace(/,/g, ""));
   if (work) day.work = Number(work[1]);
+  render();
+});
+
+document.getElementById("jump-today").addEventListener("click", () => {
+  const todayIndex = days.findIndex((day) => day.date === todayIso());
+  if (todayIndex < 0) return;
+  buzz("select");
+  selected = todayIndex;
   render();
 });
 

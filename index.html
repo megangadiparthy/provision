@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#07070f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Provision</title>
 <meta name="description" content="Food and training from the numbers on your Oura ring, Apple Watch, Garmin, or Whoop. The plan stays in your browser.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2307070f'/%3E%3Ccircle cx='16' cy='16' r='6' fill='none' stroke='%23ffffff' stroke-width='1.6'/%3E%3C/svg%3E">
@@ -25,23 +29,24 @@
 
   <fieldset class="wants">
     <legend>What you want</legend>
-    <label class="choice"><input type="radio" name="goal" value="energy" checked><span>Steadier energy</span></label>
-    <label class="choice"><input type="radio" name="goal" value="strength"><span>Get stronger</span></label>
-    <label class="choice"><input type="radio" name="goal" value="fat"><span>Lose fat, slowly</span></label>
-    <label class="choice"><input type="radio" name="goal" value="skin"><span>Clearer skin</span></label>
-    <label class="choice"><input type="radio" name="goal" value="race"><span>Train for a race</span></label>
-    <label class="choice"><input type="radio" name="goal" value="sleep"><span>Sleep better</span></label>
+    <label class="choice"><input type="radio" name="goal" value="energy" checked><input type="checkbox" switch class="buzz" tabindex="-1" aria-hidden="true"><span>Steadier energy</span></label>
+    <label class="choice"><input type="radio" name="goal" value="strength"><input type="checkbox" switch class="buzz" tabindex="-1" aria-hidden="true"><span>Get stronger</span></label>
+    <label class="choice"><input type="radio" name="goal" value="fat"><input type="checkbox" switch class="buzz" tabindex="-1" aria-hidden="true"><span>Lose fat, slowly</span></label>
+    <label class="choice"><input type="radio" name="goal" value="skin"><input type="checkbox" switch class="buzz" tabindex="-1" aria-hidden="true"><span>Clearer skin</span></label>
+    <label class="choice"><input type="radio" name="goal" value="race"><input type="checkbox" switch class="buzz" tabindex="-1" aria-hidden="true"><span>Train for a race</span></label>
+    <label class="choice"><input type="radio" name="goal" value="sleep"><input type="checkbox" switch class="buzz" tabindex="-1" aria-hidden="true"><span>Sleep better</span></label>
   </fieldset>
   <div id="day"></div>
 </div>
 
 <main class="sheet">
+  <div id="lead"></div>
   <fieldset class="eats">
     <legend>Leave off the plate</legend>
-    <label class="tick"><input type="checkbox" name="omit" value="meat"><span>Meat</span></label>
-    <label class="tick"><input type="checkbox" name="omit" value="fish"><span>Fish</span></label>
-    <label class="tick"><input type="checkbox" name="omit" value="dairy"><span>Dairy</span></label>
-    <label class="tick"><input type="checkbox" name="omit" value="eggs"><span>Eggs</span></label>
+    <label class="tick"><input type="checkbox" name="omit" value="meat"><input type="checkbox" switch class="buzz" tabindex="-1" aria-hidden="true"><span>Meat</span></label>
+    <label class="tick"><input type="checkbox" name="omit" value="fish"><input type="checkbox" switch class="buzz" tabindex="-1" aria-hidden="true"><span>Fish</span></label>
+    <label class="tick"><input type="checkbox" name="omit" value="dairy"><input type="checkbox" switch class="buzz" tabindex="-1" aria-hidden="true"><span>Dairy</span></label>
+    <label class="tick"><input type="checkbox" name="omit" value="eggs"><input type="checkbox" switch class="buzz" tabindex="-1" aria-hidden="true"><span>Eggs</span></label>
   </fieldset>
   <div id="plan" aria-live="polite"></div>
 
@@ -49,6 +54,7 @@
     <div class="week-head">
       <h2>This week</h2>
       <p>Tap a day. Edit any number. The plates follow that day.</p>
+      <button type="button" id="jump-today" hidden>Back to today</button>
     </div>
     <div class="week" id="week"></div>
   </section>
@@ -65,9 +71,14 @@
       </select>
     </label>
     <label class="field weight">
-      <span>Weight, kg</span>
+      <span>Weight</span>
       <input name="weight" id="weight" type="number" min="35" max="200" step="0.5" value="68" inputmode="decimal">
     </label>
+    <fieldset class="unit">
+      <legend>Unit</legend>
+      <label><input type="radio" name="unit" value="kg" checked><span>kg</span></label>
+      <label><input type="radio" name="unit" value="lb"><span>lb</span></label>
+    </fieldset>
     <button type="button" class="solid" id="sample">Sample week</button>
     <label class="ghost file">
       Import CSV

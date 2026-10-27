@@ -95,7 +95,7 @@ a { color: inherit; }
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
-.choice:has(input:checked) { background: #fff; color: #111; }
+.choice:has(input[name="goal"]:checked) { background: #fff; color: #111; }
 .choice:has(input:focus-visible) { outline: 2px solid #fff; outline-offset: 3px; }
 
 .day-card { padding: 3.2rem 0 0.4rem; }
@@ -224,7 +224,93 @@ a { color: inherit; }
   cursor: pointer;
 }
 .tick input { accent-color: #111; }
-.tick:has(input:checked) { background: #111114; color: #fff; }
+.tick { position: relative; }
+.tick input[name="omit"] { pointer-events: none; }
+.tick:has(input[name="omit"]:checked) { background: #111114; color: #fff; }
+.choice input.buzz,
+.tick input.buzz,
+.day-pick input.buzz,
+.next input.buzz,
+.copy-wrap input.buzz {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  clip: auto;
+  overflow: visible;
+  z-index: 3;
+  cursor: pointer;
+}
+.day-pick { cursor: pointer; }
+button, label, .tick, .choice { touch-action: manipulation; }
+
+.next {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  margin: 0 0 1.5rem;
+  padding: 1.15rem 1.25rem;
+  border: 0;
+  border-radius: 24px;
+  background: #111114;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.next-k {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+}
+.next-t {
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+}
+.next.done { background: var(--card); color: var(--ink); cursor: default; }
+.next.done .next-k { color: var(--muted); }
+.next-wrap { max-width: 36rem; margin-top: 1.35rem; }
+.day-card .next {
+  background: #fff;
+  color: #111;
+}
+.day-card .next .next-k { color: #6e6e78; }
+.day-card .next.done {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.day-card .next.done .next-k { color: rgba(255, 255, 255, 0.55); }
+.ate {
+  margin: 0.55rem 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.62);
+  font-size: 14px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.choice:active, .tick:active, .todo label:active, .next:active, .day:active, .shop-switch button:active {
+  transform: scale(0.98);
+}
+@media (prefers-reduced-motion: reduce) {
+  .choice:active, .tick:active, .todo label:active, .next:active, .day:active, .shop-switch button:active {
+    transform: none;
+  }
+}
+.plate.is-now { box-shadow: 0 0 0 2px #111114; }
+.when {
+  margin-left: 0.45rem;
+  color: #fff;
+}
 
 .use {
   display: grid;
@@ -240,7 +326,7 @@ a { color: inherit; }
 }
 .todo, .shop { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.45rem; }
 .use h2 .count { color: var(--muted); font-size: 0.95rem; letter-spacing: 0; }
-.todo span { flex: 1; }
+.todo span:not(.markbox) { flex: 1; }
 .walk-note { margin: 0.8rem 0 0; text-align: left; }
 .todo label, .shop li {
   display: flex;
@@ -250,8 +336,76 @@ a { color: inherit; }
   border-radius: 16px;
   padding: 0.8rem 0.9rem;
 }
-.todo input { margin-top: 0.2rem; accent-color: #111; }
-.todo label:has(input:checked) span { color: var(--muted); text-decoration: line-through; }
+.todo label { position: relative; min-height: 48px; align-items: center; }
+.todo input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.markbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1.5px #111;
+  flex: none;
+}
+.todo label:has(input:checked) .markbox { background: #111; box-shadow: none; }
+.todo label:has(input:checked) .markbox::after {
+  content: "";
+  display: block;
+  width: 8px;
+  height: 4px;
+  margin: 4px 0 0 4px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: rotate(-45deg);
+}
+.shop-switch { display: flex; gap: 0.4rem; margin: 0 0 0.7rem; }
+.shop-switch button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.45rem 0.8rem;
+  background: var(--card);
+}
+.shop-switch button.on { background: #111114; color: #fff; }
+.unit {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  gap: 0.35rem;
+  align-self: end;
+}
+.unit legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.unit label {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.72rem 0.85rem;
+  border-radius: 999px;
+  background: var(--card);
+  cursor: pointer;
+}
+.unit input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.unit label:has(input:checked) { background: #111114; color: #fff; }
+#jump-today {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.todo label:has(input:checked) span:not(.markbox) { color: var(--muted); text-decoration: line-through; }
 .shop li { color: var(--ink); }
 .use-actions { display: flex; gap: 0.5rem; margin-top: 0.7rem; }
 .nowline { margin: 0.8rem 0 0; max-width: 34rem; color: rgba(255,255,255,0.72); }
@@ -296,13 +450,20 @@ a { color: inherit; }
 .day.on .metric span, .day.on .day-wd { color: rgba(255, 255, 255, 0.5); }
 .day-pick {
   grid-column: 1 / -1;
+  position: relative;
+  min-width: 0;
+}
+.day-hit {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
   width: 100%;
   padding: 0 0 0.3rem;
   border: 0;
   background: transparent;
+  color: inherit;
+  font: inherit;
   text-align: left;
 }
 .day-num { font-size: 1.45rem; font-weight: 400; letter-spacing: -0.04em; line-height: 1; }
@@ -340,7 +501,7 @@ a { color: inherit; }
 .field.weight { min-width: 6.2rem; }
 .field.weight input { width: 6.2rem; }
 .hint { flex: 1 1 16rem; margin: 0; color: var(--muted); font-size: 0.92rem; }
-button.solid, .ghost.file, #apply-paste, .ask-row button {
+button.solid, label.solid, .ghost.file, #apply-paste, .ask-row button {
   border: 0;
   border-radius: 999px;
   padding: 0.75rem 1.05rem;
@@ -353,7 +514,9 @@ button.solid, .ghost.file, #apply-paste, .ask-row button {
   box-shadow: inset 0 0 0 1px rgba(17, 17, 20, 0.18);
 }
 .ghost.file input { display: none; }
-button.solid:hover, #apply-paste:hover, .ask-row button:hover { background: #2a2a2e; }
+button.solid:hover, label.solid:hover, #apply-paste:hover, .ask-row button:hover { background: #2a2a2e; }
+.copy-wrap { position: relative; display: inline-flex; }
+.copy-wrap .solid { position: relative; z-index: 0; }
 
 .paste-box {
   margin-top: 0.8rem;
