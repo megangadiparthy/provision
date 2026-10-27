@@ -201,25 +201,33 @@ function fmt(n, digits) {
   return digits ? Number(n).toFixed(digits) : String(Math.round(n));
 }
 
+function metricField(label, key, mode, value, i) {
+  return `<label class="metric"><span>${label}</span><input data-k="${key}" data-i="${i}" inputmode="${mode}" value="${value ?? ""}"></label>`;
+}
+
 function renderWeek() {
   weekEl.innerHTML = "";
   days.forEach((day, i) => {
-    const tr = document.createElement("tr");
-    if (i === selected) tr.className = "on";
-    tr.innerHTML = `
-      <td class="dayname">${shortDay(day.date)}</td>
-      <td><input data-k="sleep" data-i="${i}" inputmode="decimal" value="${day.sleep ?? ""}"></td>
-      <td><input data-k="hrv" data-i="${i}" inputmode="numeric" value="${day.hrv ?? ""}"></td>
-      <td><input data-k="rhr" data-i="${i}" inputmode="numeric" value="${day.rhr ?? ""}"></td>
-      <td><input data-k="steps" data-i="${i}" inputmode="numeric" value="${day.steps ?? ""}"></td>
-      <td><input data-k="work" data-i="${i}" inputmode="numeric" value="${day.work ?? ""}"></td>`;
-    tr.addEventListener("click", (e) => {
-      if (e.target.matches("input")) return;
+    const card = document.createElement("div");
+    card.className = "day" + (i === selected ? " on" : "");
+    const when = new Date(day.date + "T12:00:00");
+    card.innerHTML = `
+      <button type="button" class="day-pick">
+        <span class="day-num">${when.getDate()}</span>
+        <span class="day-wd">${when.toLocaleDateString("en-US", { weekday: "short" })}</span>
+      </button>
+      ${metricField("Sleep h", "sleep", "decimal", day.sleep, i)}
+      ${metricField("HRV", "hrv", "numeric", day.hrv, i)}
+      ${metricField("Rest HR", "rhr", "numeric", day.rhr, i)}
+      ${metricField("Steps", "steps", "numeric", day.steps, i)}
+      ${metricField("Train", "work", "numeric", day.work, i)}`;
+    card.addEventListener("click", (e) => {
+      if (e.target.closest("input")) return;
       selected = i;
       answerEl.hidden = true;
       render();
     });
-    weekEl.appendChild(tr);
+    weekEl.appendChild(card);
   });
 }
 
@@ -239,13 +247,15 @@ function renderPlan() {
       ? "The night sits in the better half of the week, so a real session fits."
       : "Train, and leave something in the tank.";
   planEl.innerHTML = `
-    <h2>${weekday(day.date)}</h2>
-    <p class="verdict">${TRAIN[g][kind]}</p>
-    <p class="why">${why.length ? why.join(" ") : "Sleep, HRV, and resting heart rate are not waving you off."}</p>
-    <div class="slip">
-      <div><b>${KIND_LABEL[kind]}</b><span>${GOAL_LABEL[g]}</span></div>
-      <div><b>${grams} g</b><span>Protein today</span></div>
-      <div><b>${fmt(day.work)} min</b><span>Already trained</span></div>
+    <div class="day-card">
+      <h2>${weekday(day.date)}</h2>
+      <p class="verdict">${TRAIN[g][kind]}</p>
+      <p class="why">${why.length ? why.join(" ") : "Sleep, HRV, and resting heart rate are not waving you off."}</p>
+      <div class="slip">
+        <div><b>${KIND_LABEL[kind]}</b><span>${GOAL_LABEL[g]}</span></div>
+        <div><b>${grams} g</b><span>Protein today</span></div>
+        <div><b>${fmt(day.work)} min</b><span>Already trained</span></div>
+      </div>
     </div>
     <dl class="plates">
       <div><dt>Breakfast</dt><dd>${meals[0]}</dd></div>
@@ -294,7 +304,7 @@ weekEl.addEventListener("input", (e) => {
   selected = i;
   renderPlan();
   save();
-  weekEl.querySelectorAll("tr").forEach((tr, idx) => tr.classList.toggle("on", idx === selected));
+  weekEl.querySelectorAll(".day").forEach((card, idx) => card.classList.toggle("on", idx === selected));
 });
 
 document.getElementById("sample").addEventListener("click", () => {
