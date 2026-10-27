@@ -100,6 +100,7 @@ const GOAL_LABEL = {
 const KIND_LABEL = { easy: "Easy day", steady: "Steady day", hard: "Hard day" };
 
 const weekEl = document.getElementById("week");
+const dayEl = document.getElementById("day");
 const planEl = document.getElementById("plan");
 const answerEl = document.getElementById("answer");
 const hintEl = document.getElementById("device-hint");
@@ -246,7 +247,7 @@ function renderPlan() {
     : kind === "hard"
       ? "The night sits in the better half of the week, so a real session fits."
       : "Train, and leave something in the tank.";
-  planEl.innerHTML = `
+  dayEl.innerHTML = `
     <div class="day-card">
       <h2>${weekday(day.date)}</h2>
       <p class="verdict">${TRAIN[g][kind]}</p>
@@ -256,11 +257,13 @@ function renderPlan() {
         <div><b>${grams} g</b><span>Protein today</span></div>
         <div><b>${fmt(day.work)} min</b><span>Already trained</span></div>
       </div>
-    </div>
+    </div>`;
+  planEl.innerHTML = `
+    <h2 class="section-title">Today's plates</h2>
     <dl class="plates">
-      <div><dt>Breakfast</dt><dd>${meals[0]}</dd></div>
-      <div><dt>Lunch</dt><dd>${meals[1]}</dd></div>
-      <div><dt>Dinner</dt><dd>${meals[2]}</dd></div>
+      <div class="plate plate-am"><div class="plate-copy"><dt>Breakfast</dt><dd>${meals[0]}</dd></div></div>
+      <div class="plate plate-mid"><div class="plate-copy"><dt>Lunch</dt><dd>${meals[1]}</dd></div></div>
+      <div class="plate plate-pm"><div class="plate-copy"><dt>Dinner</dt><dd>${meals[2]}</dd></div></div>
     </dl>
     <p class="note">${sleepBit}${hrvBit} ${kindLine} ${PLATES[g].watch}</p>`;
 }
