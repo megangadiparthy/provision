@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provision</title>
+<meta name="description" content="Food and training from the numbers on your Oura ring, Apple Watch, Garmin, or Whoop. The plan stays in your browser.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231e4636'/%3E%3Ccircle cx='16' cy='16' r='8' fill='none' stroke='%23f3ecdf' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='2.5' fill='%23f3ecdf'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,550;1,6..72,400&family=Public+Sans:ital,wght@0,400;0,560;0,680;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="12" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="20" cy="20" r="3.2" fill="currentColor"/></svg>
+    <div>
+      <p class="word">Provision</p>
+      <p class="sub">Food and training from a ring or a watch</p>
+    </div>
+  </div>
+  <p class="stay">Numbers stay in this browser.</p>
+</header>
+
+<main>
+  <form class="side" id="controls">
+    <fieldset>
+      <legend>What you want</legend>
+      <label class="choice"><input type="radio" name="goal" value="energy" checked> Steadier energy</label>
+      <label class="choice"><input type="radio" name="goal" value="strength"> Get stronger</label>
+      <label class="choice"><input type="radio" name="goal" value="fat"> Lose fat, slowly</label>
+      <label class="choice"><input type="radio" name="goal" value="skin"> Clearer skin</label>
+      <label class="choice"><input type="radio" name="goal" value="race"> Train for a race</label>
+      <label class="choice"><input type="radio" name="goal" value="sleep"> Sleep better</label>
+    </fieldset>
+
+    <label class="field">
+      <span>Numbers from</span>
+      <select name="device" id="device">
+        <option value="oura">Oura</option>
+        <option value="apple">Apple Watch</option>
+        <option value="garmin">Garmin</option>
+        <option value="whoop">Whoop</option>
+        <option value="typed">Typed in</option>
+      </select>
+    </label>
+    <p class="hint" id="device-hint"></p>
+
+    <label class="field">
+      <span>Body weight, kg</span>
+      <input name="weight" id="weight" type="number" min="35" max="200" step="0.5" value="68" inputmode="decimal">
+    </label>
+
+    <div class="side-actions">
+      <button type="button" class="ghost" id="sample">Load a sample week</button>
+      <label class="ghost file">
+        Import a CSV
+        <input id="csv" type="file" accept=".csv,text/csv">
+      </label>
+    </div>
+
+    <label class="field stack">
+      <span>Or paste one day</span>
+      <textarea id="paste" rows="5" placeholder="Sleep 6h 24m&#10;HRV 41&#10;Resting HR 56&#10;Steps 8,102&#10;Workout 32 min"></textarea>
+    </label>
+    <button type="button" id="apply-paste">Put this on the selected day</button>
+  </form>
+
+  <section class="sheet" aria-label="Week and plan">
+    <div class="sheet-head">
+      <h1>This week</h1>
+      <p>Click a day. Edit any number. The plates follow that row.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Day</th>
+            <th>Sleep h</th>
+            <th>HRV</th>
+            <th>Rest HR</th>
+            <th>Steps</th>
+            <th>Train min</th>
+          </tr>
+        </thead>
+        <tbody id="week"></tbody>
+      </table>
+    </div>
+
+    <article class="plan" id="plan"></article>
+
+    <form class="ask" id="ask-form">
+      <label for="ask">Ask about food or training</label>
+      <div class="ask-row">
+        <input id="ask" name="ask" type="text" autocomplete="off" placeholder="Should I lift, or what is dinner?">
+        <button type="submit">Write it</button>
+      </div>
+      <p class="answer" id="answer" hidden></p>
+    </form>
+  </section>
+</main>
+
+<footer>
+  <p>Provision writes a day from sleep, HRV, resting heart rate, steps, and how long you already trained. Protein uses the range people who train are often given, about 1.4 to 2.0 grams per kilogram. It does not diagnose, prescribe, or read a clinic record.</p>
+  <p><a href="https://github.com/megangadiparthy/provision">Source on GitHub</a> · <a href="sample-week.csv" download>Sample CSV</a></p>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

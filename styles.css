@@ -1,0 +1,251 @@
+:root {
+  --paper: #f3ecdf;
+  --sheet: #faf6ee;
+  --ink: #1c1712;
+  --muted: #6d6256;
+  --line: #d4c7b2;
+  --green: #1e4636;
+  --green-ink: #f4efe4;
+  --wash: #e5efe7;
+  --brick: #8a3d32;
+  --serif: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --sans: "Public Sans", "Avenir Next", sans-serif;
+}
+
+* { box-sizing: border-box; }
+html { background: var(--paper); color: var(--ink); }
+body {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.45;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--green); }
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.6rem 1.5rem 1.1rem;
+  border-bottom: 2px solid var(--green);
+}
+.brand { display: flex; gap: 0.85rem; align-items: center; }
+.mark { width: 36px; height: 36px; color: var(--green); }
+.word {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.sub, .stay, .hint, .sheet-head p, footer {
+  color: var(--muted);
+}
+.sub, .stay { margin: 0.2rem 0 0; font-size: 0.92rem; }
+.stay { text-align: right; max-width: 12rem; }
+
+main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 1.4rem 1.5rem 2.5rem;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1.6rem;
+  align-items: start;
+}
+
+.side {
+  position: sticky;
+  top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+fieldset {
+  border: 1px solid var(--line);
+  margin: 0;
+  padding: 0.75rem 0.8rem 0.45rem;
+  background: var(--sheet);
+}
+legend {
+  padding: 0 0.3rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.choice {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.38rem 0.15rem;
+  border-top: 1px solid transparent;
+}
+.choice:hover { background: var(--wash); }
+.choice input { accent-color: var(--green); }
+.field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.92rem; }
+.field span {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.field input, .field select, textarea {
+  background: var(--sheet);
+  border: 1px solid var(--line);
+  padding: 0.5rem 0.6rem;
+}
+textarea { resize: vertical; width: 100%; }
+.hint { margin: -0.35rem 0 0; font-size: 0.88rem; }
+.side-actions { display: flex; flex-direction: column; gap: 0.45rem; }
+button, .ghost.file {
+  background: var(--green);
+  color: var(--green-ink);
+  border: 1px solid var(--green);
+  padding: 0.55rem 0.7rem;
+  text-align: center;
+}
+button.ghost, .ghost.file {
+  background: transparent;
+  color: var(--green);
+}
+.ghost.file input { display: none; }
+button:hover, .ghost.file:hover { filter: brightness(1.08); }
+
+.sheet-head h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 2.4rem;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+.sheet-head p { margin: 0.35rem 0 0.9rem; }
+
+.table-wrap { overflow-x: auto; border-top: 1px solid var(--ink); }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 0.45rem 0.4rem; text-align: right; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+th {
+  font-size: 0.7rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  font-weight: 560;
+  color: var(--muted);
+}
+tbody tr { cursor: pointer; }
+tbody tr.on { background: var(--wash); }
+td input {
+  width: 4.6rem;
+  max-width: 100%;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  padding: 0.1rem 0;
+}
+td input:focus { outline: none; border-bottom-color: var(--green); }
+.dayname { font-weight: 680; }
+
+.plan { margin-top: 1.5rem; padding-top: 1.1rem; border-top: 1px solid var(--ink); }
+.plan h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 2rem;
+  letter-spacing: -0.03em;
+}
+.verdict { font-size: 1.08rem; max-width: 42rem; }
+.why { margin: 0.2rem 0 0.9rem; color: var(--brick); font-size: 0.92rem; }
+.slip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem 2rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.slip b {
+  display: block;
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  font-weight: 400;
+}
+.slip span {
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.plates { margin: 0; }
+.plates div {
+  display: grid;
+  grid-template-columns: 7.2rem 1fr;
+  gap: 0.8rem;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.plates dt {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 0.25rem;
+}
+.plates dd {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  line-height: 1.25;
+}
+.note { max-width: 42rem; font-size: 1.02rem; }
+
+.ask { margin-top: 1.4rem; }
+.ask label {
+  display: block;
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.4rem;
+}
+.ask-row { display: flex; gap: 0.5rem; }
+.ask-row input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--ink);
+  padding: 0.45rem 0.1rem;
+}
+.ask-row input:focus { outline: none; border-bottom-color: var(--green); }
+.answer {
+  max-width: 42rem;
+  font-family: var(--serif);
+  font-size: 1.35rem;
+  line-height: 1.3;
+}
+
+footer {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 1.5rem 2.5rem;
+  font-size: 0.88rem;
+}
+footer p { margin: 0 0 0.4rem; }
+
+@media (max-width: 860px) {
+  .top { flex-direction: column; align-items: flex-start; }
+  .stay { text-align: left; }
+  main { grid-template-columns: 1fr; }
+  .side { position: static; }
+  .plates div { grid-template-columns: 1fr; gap: 0.15rem; }
+  .sheet-head h1 { font-size: 2rem; }
+}
