@@ -645,12 +645,13 @@ function answer(q) {
   return "Ask about breakfast, lunch, dinner, protein, training, sugar, sleep, or what to buy. The answer comes from this row and the want you picked.";
 }
 
+form.addEventListener("submit", (e) => e.preventDefault());
 form.addEventListener("input", (e) => {
-  if (e.target.matches("[data-todo], .buzz")) return;
+  if (e.target.matches("[data-todo], .buzz, [data-habit], #habit-name")) return;
   render();
 });
 form.addEventListener("change", (e) => {
-  if (e.target.closest("[data-copy]")) return;
+  if (e.target.closest("[data-copy], [data-habit], #habit-name")) return;
   if (e.target.name === "unit") {
     buzz("select");
     const input = document.getElementById("weight");
@@ -803,4 +804,172 @@ document.getElementById("ask-form").addEventListener("submit", (e) => {
   answerEl.textContent = answer(q);
 });
 
+const HABIT_KEY = "provision.habits";
+const HABIT_STARTER = [
+  { id: "outside", name: "Outside before noon" },
+  { id: "session", name: "The planned session" },
+  { id: "dinner", name: "Dinner at a table" },
+  { id: "screens", name: "Screens down before bed" },
+];
+
+function loadHabits() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(HABIT_KEY) || "null");
+    if (!raw || !Array.isArray(raw.habits) || !raw.habits.length) {
+      return { habits: HABIT_STARTER.map((item) => ({ ...item })), marks: {} };
+    }
+    return { habits: raw.habits, marks: raw.marks && typeof raw.marks === "object" ? raw.marks : {} };
+  } catch (_) {
+    return { habits: HABIT_STARTER.map((item) => ({ ...item })), marks: {} };
+  }
+}
+
+let habitBook = loadHabits();
+let habitDate = todayIso();
+const habitNow = new Date();
+habitNow.setHours(12, 0, 0, 0);
+let habitMonth = new Date(habitNow.getFullYear(), habitNow.getMonth(), 1);
+
+function saveHabits() {
+  localStorage.setItem(HABIT_KEY, JSON.stringify(habitBook));
+}
+
+function habitIso(date) {
+  const d = new Date(date);
+  d.setHours(12, 0, 0, 0);
+  return d.toISOString().slice(0, 10);
+}
+
+function habitStreak() {
+  const ids = habitBook.habits.map((item) => item.id);
+  if (!ids.length) return 0;
+  const cursor = new Date();
+  cursor.setHours(12, 0, 0, 0);
+  const todayMarks = habitBook.marks[habitIso(cursor)] || [];
+  if (!ids.every((id) => todayMarks.includes(id))) cursor.setDate(cursor.getDate() - 1);
+  let count = 0;
+  while (count < 400) {
+    const got = habitBook.marks[habitIso(cursor)] || [];
+    if (!ids.every((id) => got.includes(id))) break;
+    count += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return count;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function habitPips(iso) {
+  const got = new Set(habitBook.marks[iso] || []);
+  const done = habitBook.habits.filter((item) => got.has(item.id)).length;
+  if (!done && iso !== habitDate) return "";
+  if (habitBook.habits.length > 6) return `<span class="frac">${done}/${habitBook.habits.length}</span>`;
+  return `<span class="pips">${habitBook.habits.map((item) => `<i class="pip${got.has(item.id) ? " on" : ""}"></i>`).join("")}</span>`;
+}
+
+function renderHabits() {
+  const label = document.getElementById("cal-label");
+  const grid = document.getElementById("cal");
+  const list = document.getElementById("habit-list");
+  const title = document.getElementById("habit-day");
+  const count = document.getElementById("habit-count");
+  if (!grid || !list) return;
+  const year = habitMonth.getFullYear();
+  const month = habitMonth.getMonth();
+  label.textContent = habitMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const pad = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < pad; i++) cells.push("");
+  for (let day = 1; day <= daysInMonth; day++) cells.push(habitIso(new Date(year, month, day)));
+  while (cells.length % 7) cells.push("");
+  const today = todayIso();
+  grid.innerHTML = cells.map((iso) => {
+    if (!iso) return `<span class="cal-day empty"></span>`;
+    const when = new Date(iso + "T12:00:00");
+    const cls = ["cal-day", iso === habitDate ? "on" : "", iso === today ? "today" : ""].filter(Boolean).join(" ");
+    return `<button type="button" class="${cls}" data-cal="${iso}"><span class="num">${when.getDate()}</span>${habitPips(iso)}</button>`;
+  }).join("");
+  const when = new Date(habitDate + "T12:00:00");
+  title.textContent = when.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+  const marked = new Set(habitBook.marks[habitDate] || []);
+  list.innerHTML = habitBook.habits.map((item) => `
+    <li class="habit-row">
+      <label class="todo-label"><input type="checkbox" switch data-habit="${item.id}" ${marked.has(item.id) ? "checked" : ""}><span class="markbox" aria-hidden="true"></span><span>${esc(item.name)}</span></label>
+      <button type="button" class="drop" data-drop="${item.id}">Remove</button>
+    </li>`).join("");
+  const doneToday = (habitBook.marks[today] || []).filter((id) => habitBook.habits.some((item) => item.id === id)).length;
+  const streak = habitStreak();
+  const todayLine = habitBook.habits.length
+    ? `${doneToday} of ${habitBook.habits.length} today`
+    : "Add one thing you want to keep.";
+  count.textContent = streak >= 2 ? `${todayLine}. ${streak} days with all of them.` : todayLine;
+}
+
+function addHabit() {
+  const input = document.getElementById("habit-name");
+  const name = input.value.trim();
+  if (!name || habitBook.habits.length >= 8) return;
+  habitBook.habits.push({ id: "h" + Date.now().toString(36), name });
+  input.value = "";
+  saveHabits();
+  buzz("select");
+  renderHabits();
+}
+
+document.getElementById("habits").addEventListener("click", (e) => {
+  const day = e.target.closest("[data-cal]");
+  if (day) {
+    habitDate = day.dataset.cal;
+    const picked = new Date(habitDate + "T12:00:00");
+    habitMonth = new Date(picked.getFullYear(), picked.getMonth(), 1);
+    buzz("select");
+    renderHabits();
+    return;
+  }
+  const drop = e.target.closest("[data-drop]");
+  if (!drop) return;
+  const id = drop.dataset.drop;
+  habitBook.habits = habitBook.habits.filter((item) => item.id !== id);
+  Object.keys(habitBook.marks).forEach((iso) => {
+    habitBook.marks[iso] = (habitBook.marks[iso] || []).filter((mark) => mark !== id);
+  });
+  saveHabits();
+  buzz("soft");
+  renderHabits();
+});
+
+document.getElementById("habits").addEventListener("change", (e) => {
+  const box = e.target.closest("[data-habit]");
+  if (!box) return;
+  const marks = new Set(habitBook.marks[habitDate] || []);
+  if (box.checked) marks.add(box.dataset.habit);
+  else marks.delete(box.dataset.habit);
+  habitBook.marks[habitDate] = [...marks];
+  saveHabits();
+  const allOn = habitBook.habits.length && habitBook.habits.every((item) => marks.has(item.id));
+  buzz(allOn ? "success" : box.checked ? "tap" : "soft");
+  renderHabits();
+});
+
+document.getElementById("cal-prev").addEventListener("click", () => {
+  habitMonth = new Date(habitMonth.getFullYear(), habitMonth.getMonth() - 1, 1);
+  buzz("select");
+  renderHabits();
+});
+document.getElementById("cal-next").addEventListener("click", () => {
+  habitMonth = new Date(habitMonth.getFullYear(), habitMonth.getMonth() + 1, 1);
+  buzz("select");
+  renderHabits();
+});
+document.getElementById("habit-add").addEventListener("click", addHabit);
+document.getElementById("habit-name").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  addHabit();
+});
+
 render();
+renderHabits();

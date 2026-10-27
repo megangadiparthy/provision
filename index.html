@@ -50,6 +50,32 @@
   </fieldset>
   <div id="plan" aria-live="polite"></div>
 
+  <section class="habits" id="habits" aria-label="Habits">
+    <div class="week-head">
+      <h2>Habits</h2>
+      <p id="habit-count">A month of what you are keeping.</p>
+    </div>
+    <div class="habit-layout">
+      <div>
+        <div class="cal-nav">
+          <button type="button" id="cal-prev" aria-label="Previous month">Prev</button>
+          <h3 id="cal-label"></h3>
+          <button type="button" id="cal-next" aria-label="Next month">Next</button>
+        </div>
+        <div class="cal-dow" aria-hidden="true"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+        <div class="cal-grid" id="cal"></div>
+      </div>
+      <div class="habit-side">
+        <h3 id="habit-day"></h3>
+        <ul class="todo" id="habit-list"></ul>
+        <div class="habit-add">
+          <input id="habit-name" type="text" maxlength="40" placeholder="Add a habit" autocomplete="off">
+          <button type="button" class="solid" id="habit-add">Add</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="week-block" aria-label="This week">
     <div class="week-head">
       <h2>This week</h2>
